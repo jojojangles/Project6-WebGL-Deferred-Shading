@@ -26,7 +26,7 @@
         // Execute deferred shading pipeline
 
         // CHECKITOUT: START HERE! You can even uncomment this:
-        //debugger;
+        debugger;
 
         { // TODO: this block should be removed after testing renderFullScreenQuad
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -205,12 +205,16 @@
         var init = function() {
             // Create a new buffer with gl.createBuffer, and save it as vbo.
             // TODO: ^
+            vbo = gl.createBuffer();
 
             // Bind the VBO as the gl.ARRAY_BUFFER
             // TODO: ^
+            gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+
             // Upload the positions array to the currently-bound array buffer
             // using gl.bufferData in static draw mode.
             // TODO: ^
+            gl.bufferData(gl.ARRAY_BUFFER,positions,gl.STATIC_DRAW);
         };
 
         return function(prog) {
@@ -224,14 +228,20 @@
 
             // Bind the VBO as the gl.ARRAY_BUFFER
             // TODO: ^
+            gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+
             // Enable the bound buffer as the vertex attrib array for
             // prog.a_position, using gl.enableVertexAttribArray
             // TODO: ^
+            gl.enableVertexAttribArray(gl.ARRAY_BUFFER);
+
             // Use gl.vertexAttribPointer to tell WebGL the type/layout of the buffer
             // TODO: ^
+            gl.vertexAttribPointer(gl.ARRAY_BUFFER,3,gl.FLOAT,gl.TRUE,0,0);
 
             // Use gl.drawArrays (or gl.drawElements) to draw your quad.
             // TODO: ^
+            gl.drawArrays(gl.TRIANGLES,0,4);
 
             // Unbind the array buffer.
             gl.bindBuffer(gl.ARRAY_BUFFER, null);
