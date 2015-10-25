@@ -9,6 +9,7 @@ uniform vec3 u_lightPos;
 uniform float u_lightRad;
 uniform sampler2D u_gbufs[NUM_GBUFFERS];
 uniform sampler2D u_depth;
+uniform vec3 u_campos;
 
 varying vec2 v_uv;
 
@@ -27,6 +28,14 @@ void main() {
     vec4 gb3 = texture2D(u_gbufs[3], v_uv);
     float depth = texture2D(u_depth, v_uv).x;
     // TODO: Extract needed properties from the g-buffers into local variables
+    vec3 pos = gb0.xyz;
+    vec3 geomnor = gb1.xyz;
+    vec3 colmap = gb2.xyz;
+    vec3 normap = gb3.xyz;
+    vec3 nor = applyNormalMap(geomnor,normap);
+
+    vec3 specularColor = vec3(1,1,1);
+    float shiny = 16.0;
 
     // If nothing was rendered to this pixel, set alpha to 0 so that the
     // postprocessing step can render the sky color.
@@ -35,5 +44,28 @@ void main() {
         return;
     }
 
-    gl_FragColor = vec4(0, 0, 1, 1);  // TODO: perform lighting calculations
+    vec3 lightDir = u_lightPos - pos;
+    float distance = length(lightDir);
+    lightDir = lightDir / distance;
+
+    float lam = max(dot(lightDir,nor),0.0);
+    float spe = 0.0;
+    float d = max(distance - u_lightRad, 0.0);
+    float att = d/u_lightRad + 1.0;
+    att = 1.0 / (att * att);
+
+    if(lam > 0.0) {
+        vec3 view = normalize(pos - u_campos);
+        vec3 halfS = normalize(lightDir + view);
+        float sAngle = max(dot(halfS,nor),0.0);
+        spe = pow(sAngle,shiny);
+    }
+
+    if(distance > u_lightRad) {
+      gl_FragColor = vec4(0,0,0,0);
+      return;
+    }
+    else {
+      gl_FragColor = vec4((lam*colmap + spe*specularColor)*att, 1) / distance;  // TODO: perform lighting calculations
+    }
 }
