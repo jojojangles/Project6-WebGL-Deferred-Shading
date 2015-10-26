@@ -5,6 +5,7 @@
     R.pass_copy = {};
     R.pass_debug = {};
     R.pass_deferred = {};
+    R.pass_tiled = {};
     R.pass_post1 = {};
     R.lights = [];
 
@@ -18,6 +19,7 @@
         loadAllShaderPrograms();
         R.pass_copy.setup();
         R.pass_deferred.setup();
+        R.pass_tiled.setup();
     };
 
     // TODO: Edit if you want to change the light initial positions
@@ -94,6 +96,14 @@
         gl_draw_buffers.drawBuffersWEBGL([gl_draw_buffers.COLOR_ATTACHMENT0_WEBGL]);
     };
 
+    R.pass_tiled.setup = function() {
+        R.pass_tiled.fbo = gl.createFramebuffer();
+        R.pass_tiled.colorTex = createAndBindColorTargetTexture(
+            R.pass_tiled.fbo, gl_draw_buffers.COLOR_ATTACHMENT0_WEBGL);
+        abortIfFramebufferIncomplete(R.pass_tiled.fbo);
+        gl_draw_buffers.drawBuffersWEBGL([gl_draw_buffers.COLOR_ATTACHMENT0_WEBGL]);
+    };
+
     /**
      * Loads all of the shader programs used in the pipeline.
      */
@@ -128,6 +138,7 @@
             });
 
         loadDeferredProgram('ambient', function(p) {
+            p.u_ambo = gl.getUniformLocation(p.prog, 'u_ambo');
             // Save the object into this variable for access later
             R.prog_Ambient = p;
         });
@@ -137,7 +148,21 @@
             p.u_lightPos = gl.getUniformLocation(p.prog, 'u_lightPos');
             p.u_lightCol = gl.getUniformLocation(p.prog, 'u_lightCol');
             p.u_lightRad = gl.getUniformLocation(p.prog, 'u_lightRad');
+            p.u_campos   = gl.getUniformLocation(p.prog, 'u_campos');
             R.prog_BlinnPhong_PointLight = p;
+
+        });
+
+        loadDeferredProgram('tiled-bp', function(p) {
+            // Save the object into this variable for access later
+            p.u_lightCol = gl.getUniformLocation(p.prog, 'u_lightCol');
+            p.u_lightPos = gl.getUniformLocation(p.prog, 'u_lightPos');
+            p.u_lightRad = gl.getUniformLocation(p.prog, 'u_lightRad');
+            p.u_campos   = gl.getUniformLocation(p.prog, 'u_campos');
+            p.u_lightList = gl.getUniformLocation(p.prog, 'u_lightList');
+            p.u_lightIndx = gl.getUniformLocation(p.prog, 'u_lightIndx');
+            R.prog_BlinnPhong_PointLight = p;
+
         });
 
         loadDeferredProgram('debug', function(p) {

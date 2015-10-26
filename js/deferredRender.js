@@ -37,7 +37,8 @@
         } else {
             // * Deferred pass and postprocessing pass(es)
             // TO+DO: uncomment these
-            R.pass_deferred.render(state);
+            if(cfg.tiled) R.pass_tiled.render(state);
+            else R.pass_tiled.render(state);
             R.pass_post1.render(state);
 
             // OPTIONAL TODO: call more postprocessing passes, if any
@@ -112,32 +113,28 @@
         gl.clearDepth(1.0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // * _ADD_ together the result of each lighting pass
+
 
         // Enable blending and use gl.blendFunc to blend with:
-        //   color = 1 * src_color + 1 * dst_color
-        // TO+DO: ^
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.ONE, gl.ONE);
 
         // * Bind/setup the ambient pass, and render using fullscreen quad
         bindTexturesForLightPass(R.prog_Ambient);
+        gl.uniform3f(R.prog_Ambient.u_ambo, cfg.ambient[0],cfg.ambient[1],cfg.ambient[2]);
         renderFullScreenQuad(R.prog_Ambient);
 
-        // * Bind/setup the Blinn-Phong pass, and render using fullscreen quad
         bindTexturesForLightPass(R.prog_BlinnPhong_PointLight);
 
-        // TO+DO: add a loop here, over the values in R.lights, which sets the
-        //   uniforms R.prog_BlinnPhong_PointLight.u_lightPos/Col/Rad etc.,
-        //   then does renderFullScreenQuad(R.prog_BlinnPhong_PointLight).
-
         gl.enable(gl.SCISSOR_TEST);
-        for(var i = 0; i < R.lights.length; i++) {
+        var tlight = R.lights.length;
+        if(cfg.oneLight) {tlight = 1;}
+        for(var i = 0; i < tlight; i++) {
           var light = R.lights[i];
-          R.prog_BlinnPhong_PointLight.u_lightPos = light.pos;
-          R.prog_BlinnPhong_PointLight.u_lightCol = light.col;
-          R.prog_BlinnPhong_PointLight.u_lightRad = R.LIGHT_RADIUS;
-          R.prog_BlinnPhong_PointLight.u_campos = state.position;
+          gl.uniform3f(R.prog_BlinnPhong_PointLight.u_lightCol, light.col[0],light.col[1],light.col[2]);
+          gl.uniform3f(R.prog_BlinnPhong_PointLight.u_lightPos, light.pos[0],light.pos[1],light.col[2]);
+          gl.uniform1f(R.prog_BlinnPhong_PointLight.u_lightRad, R.LIGHT_RADIUS);
+          gl.uniform3f(R.prog_BlinnPhong_PointLight.u_campos, state.position[0],state.position[1],state.position[2]);
           var sc = getScissorForLight(state.viewMat, state.projMat, light)
           if(sc) {
             gl.scissor(sc[0],sc[1],sc[2],sc[3]);
@@ -160,6 +157,36 @@
         //   var sc = getScissorForLight(state.viewMat, state.projMat, light);
 
         // Disable blending so that it doesn't affect other code
+        gl.disable(gl.BLEND);
+    };
+
+    R.pass_tiled.render = function(state) {
+        // * Bind R.pass_deferred.fbo to write into for later postprocessing
+        gl.bindFramebuffer(gl.FRAMEBUFFER, R.pass_deferred.fbo);
+
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        gl.clearDepth(1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+
+        // ambient
+        bindTexturesForLightPass(R.prog_Ambient);
+        gl.uniform3f(R.prog_Ambient.u_ambo, cfg.ambient[0],cfg.ambient[1],cfg.ambient[2]);
+        renderFullScreenQuad(R.prog_Ambient);
+
+        bindTexturesForLightPass(R.prog_BlinnPhong_PointLight);
+
+        var tilesize = 100;
+        var tileX = Math.floor((width + tilesize - 1),tilesize)
+        var tileY = Math.floor((height + tilesize - 1),tilesize)
+
+        var liTex = []; //base for texture holding global light list, 1 x lightList.length
+        var ixTex = []; //base for texture holding tile light ix list, 1 x
+        var gridTex = [][]; //texture holding light grid, tileX x tileY
+
+
         gl.disable(gl.BLEND);
     };
 
@@ -205,6 +232,32 @@
         // * Render a fullscreen quad to perform shading on
         renderFullScreenQuad(R.progPost1);
     };
+
+    var renderProxySphere = (function() {
+        var positions = new Float32Array([
+            -1.0, -1.0, 0.0,
+             1.0, -1.0, 0.0,
+            -1.0,  1.0, 0.0,
+             1.0,  1.0, 0.0
+        ]);
+        var vbo = null;
+        var init = function() {
+            vbo = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+            gl.bufferData(gl.ARRAY_BUFFER,positions,gl.STATIC_DRAW);
+        };
+        return function(prog) {
+            if (!vbo) {
+                init();
+            }
+            gl.useProgram(prog.prog);
+            gl.bindBuffer(gl.ARRAY_BUFFER,vbo);
+            gl.enableVertexAttribArray(vbo);
+            gl.vertexAttribPointer(vbo,3,gl.FLOAT,gl.FALSE,0,0);
+            gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+            gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        };
+    })
 
     var renderFullScreenQuad = (function() {
         // The variables in this function are private to the implementation of

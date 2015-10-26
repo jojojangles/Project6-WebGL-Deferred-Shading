@@ -44,13 +44,12 @@ void main() {
         return;
     }
 
-    vec3 lightDir = u_lightPos - pos;
-    float distance = length(lightDir);
-    lightDir = lightDir / distance;
+    vec3 lightDir = normalize(u_lightPos - pos);
+    float dist = distance(u_lightPos, pos);
 
     float lam = max(dot(lightDir,nor),0.0);
     float spe = 0.0;
-    float d = max(distance - u_lightRad, 0.0);
+    float d = max(dist - u_lightRad, 0.0);
     float att = d/u_lightRad + 1.0;
     att = 1.0 / (att * att);
 
@@ -61,11 +60,11 @@ void main() {
         spe = pow(sAngle,shiny);
     }
 
-    if(distance > u_lightRad) {
-      gl_FragColor = vec4(0,0,0,0);
+    if(4.0*dist > u_lightRad) {
+      gl_FragColor = vec4(0,0,0,1);
       return;
     }
     else {
-      gl_FragColor = vec4((lam*colmap + spe*specularColor)*att, 1) / distance;  // TODO: perform lighting calculations
+      gl_FragColor = vec4((lam*colmap*u_lightCol + spe*specularColor), 1) * att;  // TODO: perform lighting calculations
     }
 }

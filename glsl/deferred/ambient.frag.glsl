@@ -7,6 +7,7 @@ precision highp int;
 
 uniform sampler2D u_gbufs[NUM_GBUFFERS];
 uniform sampler2D u_depth;
+uniform vec3 u_ambo;
 
 varying vec2 v_uv;
 
@@ -21,11 +22,11 @@ void main() {
     vec3 geomnor = gb1.xyz;
     vec3 colmap = gb2.xyz;
     vec3 normap = gb3.xyz;
-    
+
     if (depth == 1.0) {
         gl_FragColor = vec4(0, 0, 0, 0); // set alpha to 0
         return;
     }
-
-    gl_FragColor = vec4(0.1, 0.1, 0.1, 1);  // TODO: replace this
+    vec3 sploop = u_ambo/255.0;
+    gl_FragColor = vec4(colmap*sploop,1);
 }
